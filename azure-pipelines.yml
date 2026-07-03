@@ -1,29 +1,24 @@
-# Docker
-# Build a Docker image
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
-
 trigger:
 - master
-
 resources:
 - repo: self
 
 variables:
   tag: '$(Build.BuildId)'
+  acrConnName: "pipeline" # 刚才创建的服务连接名
+  imageRepo: "backend-test"
 
-stages:
-- stage: Build
-  displayName: Build image
-  jobs:
-  - job: Build
-    displayName: Build
-    pool:
-      vmImage: ubuntu-latest
-    steps:
-    - task: Docker@2
-      displayName: Build an image
-      inputs:
-        command: build
-        dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
-        tags: |
-          $(tag)
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+# 一键构建并推送到ACR容器注册表
+- task: Docker@2
+  displayName: Build & Push to ACR
+  inputs:
+    command: buildAndPush
+    containerRegistry: $(acrConnName)
+    repository: $(imageRepo)
+    dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
+    tags: $(tag)
+    arguments: --progress plain # 消除你之前的日志警告
