@@ -1,6 +1,6 @@
 variables:
   acrServiceConn: "pipeline"
-  acrRepo: "demo-service"
+  acrRepo: "backend-test"
   tag: "$(Build.BuildId)"
 
 pool:
