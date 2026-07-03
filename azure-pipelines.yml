@@ -1,24 +1,26 @@
-trigger:
-- master
-resources:
-- repo: self
-
 variables:
-  tag: '$(Build.BuildId)'
-  acrConnName: "pipeline" # 刚才创建的服务连接名
-  imageRepo: "backend-test"
+  acrServiceConn: "pipeline"
+  acrRepo: "demo-service"
+  tag: "$(Build.BuildId)"
 
 pool:
   vmImage: ubuntu-latest
-
 steps:
-# 一键构建并推送到ACR容器注册表
+# 第一步：构建镜像，支持自定义arguments
 - task: Docker@2
-  displayName: Build & Push to ACR
+  displayName: Build image
   inputs:
-    command: buildAndPush
-    containerRegistry: $(acrConnName)
-    repository: $(imageRepo)
+    command: build
+    repository: $(acrRepo)
     dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
     tags: $(tag)
-    arguments: --progress plain # 消除你之前的日志警告
+    arguments: --progress plain # 自定义构建参数生效
+
+# 第二步：推送镜像到ACR
+- task: Docker@2
+  displayName: Push image to ACR
+  inputs:
+    command: push
+    containerRegistry: $(acrServiceConn)
+    repository: $(acrRepo)
+    tags: $(tag)
