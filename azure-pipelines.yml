@@ -1,7 +1,7 @@
 variables:
   acrServiceConn: "pipeline"
   acrRepo: "backend-test"
-  tag: "10"
+  tag: '$(Build.BuildId)'
 
 pool:
   vmImage: ubuntu-latest
