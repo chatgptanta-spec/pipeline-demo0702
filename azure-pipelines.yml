@@ -2,11 +2,8 @@ variables:
   acrServiceConn: "pipeline"
   acrRepo: "backend-test"
   tag: '$(Build.BuildId)'
-  # 替换成你自己的ACR完整地址
   acrRegistry: "pipeline.azurecr.io"
-  # DevOps里创建的SSH服务连接名称
   sshConnName: "vm-ssh-conn"
-  # 容器自定义名称
   containerName: backend-test-app
 
 pool:
@@ -33,33 +30,31 @@ steps:
     repository: $(acrRepo)
     tags: $(tag)
 
-# 3. SSH远程连接VM，部署新版本镜像
+# 3. SSH远程部署（修复容器不存在报错+修复acr登录域名警告）
 - task: SSH@0
   displayName: Deploy new image to Azure VM
   inputs:
     sshEndpoint: $(sshConnName)
     runOptions: inline
     inline: |
-      # 用VM托管身份免密登录ACR
       az login --identity
-      az acr login --name $(acrRegistry)
+      # 截取acr短名 pipeline，去除.azurecr.io
+      ACR_SHORT=$(echo $(acrRegistry) | cut -d'.' -f1)
+      az acr login --name $ACR_SHORT
 
-      # 拉取本次流水线构建的镜像
-      docker pull $(acrRegistry)/$(acrRepo):$(tag)
+      FULL_IMG=$(acrRegistry)/$(acrRepo):$(tag)
+      docker pull $FULL_IMG
 
-      # 停止并删除旧容器
-      if docker ps -a --filter "name=^/$(containerName)$" > /dev/null; then
-        docker stop $(containerName)
-        docker rm $(containerName)
-      fi
+      # 容器不存在时静默跳过，不输出错误
+      docker ps -a --filter "name=^/${containerName}$" | grep -q . && {
+        docker stop ${containerName}
+        docker rm ${containerName}
+      } || true
 
-      # 启动新容器，--restart always 开机自动重启
-      # -p 端口映射根据你的项目实际端口修改
       docker run -d \
-        --name $(containerName) \
+        --name ${containerName} \
         --restart always \
         -p 8080:8080 \
-        $(acrRegistry)/$(acrRepo):$(tag)
+        $FULL_IMG
 
-      # 打印运行状态，方便流水线查看日志
-      docker ps | grep $(containerName)
+      docker ps | grep ${containerName}
