@@ -3,7 +3,7 @@ variables:
   acrRepo: "backend-test"
   tag: '$(Build.BuildId)'
   # 替换成你自己的ACR完整地址
-  acrRegistry: "xxx.azurecr.io"
+  acrRegistry: "pipeline.azurecr.io"
   # DevOps里创建的SSH服务连接名称
   sshConnName: "vm-ssh-conn"
   # 容器自定义名称
