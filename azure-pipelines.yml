@@ -30,7 +30,7 @@ steps:
     repository: $(acrRepo)
     tags: $(tag)
 
-# 3. SSH远程部署（修复容器不存在报错+修复acr登录域名警告）
+# 3. SSH部署（修复所有语法/变量解析bug）
 - task: SSH@0
   displayName: Deploy new image to Azure VM
   inputs:
@@ -38,23 +38,20 @@ steps:
     runOptions: inline
     inline: |
       az login --identity
-      # 截取acr短名 pipeline，去除.azurecr.io
-      ACR_SHORT=$(echo $(acrRegistry) | cut -d'.' -f1)
-      az acr login --name $ACR_SHORT
+      ACR_SHORT=$(echo "$(acrRegistry)" | cut -d'.' -f1)
+      az acr login --name "$ACR_SHORT"
 
-      FULL_IMG=$(acrRegistry)/$(acrRepo):$(tag)
-      docker pull $FULL_IMG
+      FULL_IMG="$(acrRegistry)/$(acrRepo):$(tag)"
+      echo "Pull image: $FULL_IMG"
+      docker pull "$FULL_IMG"
 
-      # 容器不存在时静默跳过，不输出错误
-      docker ps -a --filter "name=^/${containerName}$" | grep -q . && {
-        docker stop ${containerName}
-        docker rm ${containerName}
-      } || true
+      # 安全删除旧容器，加引号避免空变量报错
+      if docker ps -a --filter "name=^/$(containerName)$" | grep -q .; then
+        docker stop "$(containerName)"
+        docker rm "$(containerName)"
+      fi
 
-      docker run -d \
-        --name ${containerName} \
-        --restart always \
-        -p 8080:8080 \
-        $FULL_IMG
+      # 整行docker run不换行拆分，彻底避免always被识别为镜像
+      docker run -d --name "$(containerName)" --restart always -p 8080:8080 "$FULL_IMG"
 
-      docker ps | grep ${containerName}
+      docker ps | grep "$(containerName)"
