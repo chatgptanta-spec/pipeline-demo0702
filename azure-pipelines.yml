@@ -12,12 +12,6 @@ steps:
 - checkout: self
   fetchDepth: 0
 
-- task: JavaToolInstaller@0
-  displayName: 安装JDK17
-  inputs:
-    versionSpec: '17'
-    jdkArchitectureOption: 'x64'
-
 # SonarCloud扫描初始化
 - task: SonarCloudPrepare@3
   displayName: SonarCloud 代码扫描初始化
