@@ -2,11 +2,18 @@ variables:
   acrServiceConn: "pipeline"
   acrRepo: "backend-test"
   tag: '$(Build.BuildId)'
+  # 替换成你自己的ACR完整地址
+  acrRegistry: "xxx.azurecr.io"
+  # DevOps里创建的SSH服务连接名称
+  sshConnName: "vm-ssh-conn"
+  # 容器自定义名称
+  containerName: backend-test-app
 
 pool:
   vmImage: ubuntu-latest
+
 steps:
-# 1. 构建（自动带上ACR完整域名前缀）
+# 1. 构建镜像
 - task: Docker@2
   displayName: Build Image
   inputs:
@@ -15,9 +22,9 @@ steps:
     repository: $(acrRepo)
     dockerfile: Dockerfile
     tags: $(tag)
-    arguments: --progress plain # build模式支持arguments
+    arguments: --progress plain
 
-# 2. 推送（直接复用构建好的完整标签）
+# 2. 推送镜像到ACR仓库
 - task: Docker@2
   displayName: Push to ACR
   inputs:
@@ -25,3 +32,34 @@ steps:
     containerRegistry: $(acrServiceConn)
     repository: $(acrRepo)
     tags: $(tag)
+
+# 3. SSH远程连接VM，部署新版本镜像
+- task: SSH@0
+  displayName: Deploy new image to Azure VM
+  inputs:
+    sshEndpoint: $(sshConnName)
+    runOptions: inline
+    inline: |
+      # 用VM托管身份免密登录ACR
+      az login --identity
+      az acr login --name $(acrRegistry)
+
+      # 拉取本次流水线构建的镜像
+      docker pull $(acrRegistry)/$(acrRepo):$(tag)
+
+      # 停止并删除旧容器
+      if docker ps -a --filter "name=^/$(containerName)$" > /dev/null; then
+        docker stop $(containerName)
+        docker rm $(containerName)
+      fi
+
+      # 启动新容器，--restart always 开机自动重启
+      # -p 端口映射根据你的项目实际端口修改
+      docker run -d \
+        --name $(containerName) \
+        --restart always \
+        -p 8080:8080 \
+        $(acrRegistry)/$(acrRepo):$(tag)
+
+      # 打印运行状态，方便流水线查看日志
+      docker ps | grep $(containerName)
