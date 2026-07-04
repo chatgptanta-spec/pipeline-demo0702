@@ -1,0 +1,57 @@
+variables:
+  acrServiceConn: "pipeline"
+  acrRepo: "backend-test"
+  tag: '$(Build.BuildId)'
+  acrRegistry: "pipeline.azurecr.io"
+  sshConnName: "vm-ssh-conn"
+  containerName: backend-test-app
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+# 1. 构建镜像
+- task: Docker@2
+  displayName: Build Image
+  inputs:
+    command: build
+    containerRegistry: $(acrServiceConn)
+    repository: $(acrRepo)
+    dockerfile: Dockerfile
+    tags: $(tag)
+    arguments: --progress plain
+
+# 2. 推送镜像到ACR仓库
+- task: Docker@2
+  displayName: Push to ACR
+  inputs:
+    command: push
+    containerRegistry: $(acrServiceConn)
+    repository: $(acrRepo)
+    tags: $(tag)
+
+# 3. SSH部署（修复所有语法/变量解析bug）
+- task: SSH@0
+  displayName: Deploy new image to Azure VM
+  inputs:
+    sshEndpoint: $(sshConnName)
+    runOptions: inline
+    inline: |
+      az login --identity
+      ACR_SHORT=$(echo "$(acrRegistry)" | cut -d'.' -f1)
+      az acr login --name "$ACR_SHORT"
+
+      FULL_IMG="$(acrRegistry)/$(acrRepo):$(tag)"
+      echo "Pull image: $FULL_IMG"
+      docker pull "$FULL_IMG"
+
+      # 安全删除旧容器，加引号避免空变量报错
+      if docker ps -a --filter "name=^/$(containerName)$" | grep -q .; then
+        docker stop "$(containerName)"
+        docker rm "$(containerName)"
+      fi
+
+      # 整行docker run不换行拆分，彻底避免always被识别为镜像
+      docker run -d --name "$(containerName)" --restart always -p 8080:8080 "$FULL_IMG"
+
+      docker ps | grep "$(containerName)"
