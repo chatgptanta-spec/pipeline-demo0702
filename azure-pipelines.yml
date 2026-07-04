@@ -2,11 +2,56 @@ variables:
   acrServiceConn: "pipeline"
   acrRepo: "backend-test"
   tag: '$(Build.BuildId)'
+  sonarCloudConn: "sonarQubeCloud"
+  mavenOpts: "-Xmx2048m"
 
 pool:
   vmImage: ubuntu-latest
+
 steps:
-# 1. 构建（自动带上ACR完整域名前缀）
+- checkout: self
+  fetchDepth: 0
+
+- task: JavaToolInstaller@0
+  displayName: 安装JDK17
+  inputs:
+    versionSpec: '17'
+    jdkArchitectureOption: 'x64'
+
+# SonarCloud扫描初始化
+- task: SonarCloudPrepare@3
+  displayName: SonarCloud 代码扫描初始化
+  inputs:
+    SonarCloud: $(sonarCloudConn)
+    scannerMode: 'Maven'
+    organization: 你的SonarCloud组织ID
+    projectKey: backend-test
+    projectName: backend-test-service
+    projectVersion: $(tag)
+    extraProperties: |
+      sonar.java.source=17
+      sonar.java.target=17
+      sonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+
+# Maven编译+单元测试+上传扫描结果
+- task: Maven@3
+  displayName: Maven编译&单元测试&提交扫描报告
+  inputs:
+    mavenPomFile: 'pom.xml'
+    mavenOptions: $(mavenOpts)
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '17'
+    goals: 'clean verify sonar:sonar'
+
+# 校验代码质量门
+- task: SonarCloudPublish@3
+  displayName: 校验SonarCloud代码质量门
+  inputs:
+    SonarCloud: $(sonarCloudConn)
+    pollingTimeoutSec: 300
+    failOnQualityGateFailed: true
+
+# 构建镜像
 - task: Docker@2
   displayName: Build Image
   inputs:
@@ -15,9 +60,9 @@ steps:
     repository: $(acrRepo)
     dockerfile: Dockerfile
     tags: $(tag)
-    arguments: --progress plain # build模式支持arguments
+    arguments: --progress plain
 
-# 2. 推送（直接复用构建好的完整标签）
+# 推送ACR
 - task: Docker@2
   displayName: Push to ACR
   inputs:
