@@ -57,7 +57,7 @@ stages:
           - checkout: none
 
           - script: |
-              az login --identity --allow-no-subscriptions
+              az login --identity
 
               docker pull pipeline2.azurecr.io/$(imageRepository):$(tag)
 
