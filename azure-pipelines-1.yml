@@ -40,33 +40,33 @@ stages:
 - stage: Deploy
   displayName: Deploy to VM
   dependsOn: Build
-
   jobs:
-
   - deployment: DeployToVM
-
     displayName: Deploy Docker Container
-
     environment: env-test
-
     strategy:
       runOnce:
         deploy:
           steps:
-
           - checkout: none
-
           - script: |
-              az login --identity
+              # 完全删除az login相关代码，直接docker登录ACR
+              FULL_IMG="pipeline2.azurecr.io/$(imageRepository):$(tag)"
+              echo "正在登录ACR：$FULL_IMG"
+              docker login pipeline2.azurecr.io -u $(ACR_USER) -p $(ACR_PWD)
+              docker pull "$FULL_IMG"
 
-              docker pull pipeline2.azurecr.io/$(imageRepository):$(tag)
-
+              # 清理旧容器，|| true忽略不存在告警
               docker stop myapp || true
               docker rm myapp || true
 
+              # 启动新容器
               docker run -d \
                 --restart unless-stopped \
                 --name myapp \
                 -p 80:8080 \
-                <your-acr>.azurecr.io/$(imageRepository):$(tag)
+                "$FULL_IMG"
+
+              echo "部署完成，当前运行容器："
+              docker ps | grep myapp
             displayName: Deploy Container
