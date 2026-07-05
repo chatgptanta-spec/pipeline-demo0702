@@ -57,9 +57,7 @@ stages:
           - checkout: none
 
           - script: |
-              docker login pipeline2.azurecr.io \
-                -u $(ACR_USERNAME) \
-                -p $(ACR_PASSWORD)
+              az login --identity --allow-no-subscriptions
 
               docker pull pipeline2.azurecr.io/$(imageRepository):$(tag)
 
