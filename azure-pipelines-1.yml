@@ -54,18 +54,24 @@ stages:
               FULL_IMG="pipeline2.azurecr.io/$(imageRepository):$(tag)"
               echo "正在登录ACR：$FULL_IMG"
               docker login pipeline2.azurecr.io -u $(ACR_USER) -p $(ACR_PWD)
-              FULL_IMG="$(acrRegistry)/$(acrRepo):$(tag)"
-              echo "Pull image: $FULL_IMG"
               docker pull "$FULL_IMG"
 
-              # 安全删除旧容器，加引号避免空变量报错
-              if docker ps -a --filter "name=^/$(containerName)$" | grep -q .; then
-                docker stop "$(containerName)"
-                docker rm "$(containerName)"
+              # 存在才停止删除，不存在直接跳过
+              if docker ps -a --filter "name=^/myapp$" | grep -q .; then
+                echo "发现旧容器myapp，停止并删除"
+                docker stop myapp
+                docker rm myapp
+              else
+                echo "无旧容器myapp，无需清理"
               fi
 
-              # 整行docker run不换行拆分，彻底避免always被识别为镜像
-              docker run -d --name "$(containerName)" --restart always -p 8080:8080 "$FULL_IMG"
+              # 启动新容器
+              docker run -d \
+                --restart unless-stopped \
+                --name myapp \
+                -p 80:8080 \
+                "$FULL_IMG"
 
-              docker ps | grep "$(containerName)"
+              echo "部署完成，当前运行容器："
+              docker ps | grep myapp
             displayName: Deploy Container
