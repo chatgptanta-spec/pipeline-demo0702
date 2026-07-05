@@ -57,8 +57,9 @@ stages:
           - checkout: none
 
           - script: |
-              az login --identity
-              az acr login --name "$ACR_SHORT"
+              docker login pipeline2.azurecr.io \
+                -u $(ACR_USERNAME) \
+                -p $(ACR_PASSWORD)
 
               docker pull pipeline2.azurecr.io/$(imageRepository):$(tag)
 
