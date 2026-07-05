@@ -7,7 +7,7 @@ variables:
   containerName: backend-test-app
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: ubuntu-latest66666
 
 steps:
 # 1. 构建镜像
