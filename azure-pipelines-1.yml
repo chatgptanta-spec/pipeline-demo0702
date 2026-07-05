@@ -43,7 +43,9 @@ stages:
   jobs:
   - deployment: DeployToVM
     displayName: Deploy Docker Container
-    environment: env-test
+    environment:
+      name: env-test
+      resourceType: VirtualMachine
     strategy:
       runOnce:
         deploy:
