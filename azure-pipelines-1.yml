@@ -56,22 +56,16 @@ stages:
               docker login pipeline2.azurecr.io -u $(ACR_USER) -p $(ACR_PWD)
               docker pull "$FULL_IMG"
 
-              # 存在才停止删除，不存在直接跳过
-              if docker ps -a --filter "name=^/myapp$" | grep -q .; then
-                echo "发现旧容器myapp，停止并删除"
-                docker stop myapp
-                docker rm myapp
-              else
-                echo "无旧容器myapp，无需清理"
-              fi
+              # 标准写法，把stderr重定向空设备，彻底隐藏No such container报错
+              docker stop myapp 2>/dev/null || true
+              docker rm myapp 2>/dev/null || true
 
-              # 启动新容器
+              echo "准备启动新容器"
               docker run -d \
                 --restart unless-stopped \
                 --name myapp \
                 -p 80:8080 \
                 "$FULL_IMG"
 
-              echo "部署完成，当前运行容器："
+              echo "部署完成，运行容器："
               docker ps | grep myapp
-            displayName: Deploy Container
