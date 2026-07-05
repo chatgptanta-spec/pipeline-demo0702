@@ -57,11 +57,10 @@ stages:
           - checkout: none
 
           - script: |
-              docker login <your-acr>.azurecr.io \
-                -u $(ACR_USERNAME) \
-                -p $(ACR_PASSWORD)
+              az login --identity
+              az acr login --name "$ACR_SHORT"
 
-              docker pull <your-acr>.azurecr.io/$(imageRepository):$(tag)
+              docker pull pipeline2.azurecr.io/$(imageRepository):$(tag)
 
               docker stop myapp || true
               docker rm myapp || true
