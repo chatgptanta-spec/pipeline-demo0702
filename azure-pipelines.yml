@@ -1,6 +1,6 @@
 variables:
   acrServiceConn: "pipeline"
-  acrRepo: "backend-test"
+  acrRepo: "backend-test2"
   tag: '$(Build.BuildId)'
   acrRegistry: "pipeline.azurecr.io"
   sshConnName: "vm-ssh-conn"
