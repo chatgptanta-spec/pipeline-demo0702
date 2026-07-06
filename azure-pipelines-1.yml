@@ -3,7 +3,7 @@ trigger:
 
 variables:
   dockerRegistryServiceConnection: '900c2bfc-4506-44e5-b466-94672a1e7311'
-  imageRepository: 'myapp'
+  imageRepository: 'myapp-dev'
   dockerfilePath: '**/Dockerfile'
   tag: '$(Build.BuildId)'
 
