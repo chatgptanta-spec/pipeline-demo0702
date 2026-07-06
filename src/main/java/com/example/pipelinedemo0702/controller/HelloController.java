@@ -9,6 +9,6 @@ public class HelloController {
     // 访问地址：http://localhost:8080/hello
     @GetMapping("/hello")
     public String hello() {
-        return "**********HELLO FROM BENNY!!! ********";
+        return "**********HELLO FROM Freedotech!!! ********";
     }
 }
